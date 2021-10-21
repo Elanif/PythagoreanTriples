@@ -89,7 +89,7 @@ namespace tpp {
 		}
 	}
 
-	int_fast64_t mult(int_fast64_t a, int_fast64_t b, int_fast64_t mod) {
+	int_fast64_t mul_mod(int_fast64_t a, int_fast64_t b, int_fast64_t mod) {
 		int_fast64_t result = 0;
 		while (b) {
 			if (b & 1)
@@ -100,8 +100,17 @@ namespace tpp {
 		return result;
 	}
 
+	int_fast64_t power_mod(int_fast64_t a, int_fast64_t b, int_fast64_t mod) {
+		int_fast64_t result=1;
+		while (b) {
+			if (b & 1) result = mul_mod(result, a, mod);
+			if (b >>= 1) a = mul_mod(a, a, mod);
+		}
+		return result % mod;
+	}
+
 	int_fast64_t f(int_fast64_t x, int_fast64_t c, int_fast64_t mod) {
-		return (mult(x, x, mod) + c) % mod;
+		return (mul_mod(x, x, mod) + c) % mod;
 	}
 
 	//https://cp-algorithms.com/algebra/factorization.html
@@ -122,7 +131,7 @@ namespace tpp {
 				xs = x;
 				for (int_fast64_t i = 0; i < m && i < l - k; i++) {
 					x = f(x, c, n);
-					q = mult(q, abs(y - x), n);
+					q = mul_mod(q, abs(y - x), n);
 				}
 				g = std::gcd(q, n);
 				k += m;
@@ -165,6 +174,28 @@ namespace tpp {
 		}
 		return n;
 	}
+
+	template<class m>
+	bool ispmiller(int_fast64_t p, m& mt) { // O(30*logp)
+		if (p < 2) return false;
+		if (p == 2) return true;
+		if (p % 2 == 0) return false;
+		std::uniform_int_distribution< int_fast64_t> ud(3, p - 1);
+		int_fast64_t s = p - 1;
+		unsigned long trailing_zeroes = 0;
+		_BitScanForward64(&trailing_zeroes, s);
+		s >>= trailing_zeroes;
+		for (int_fast64_t i = 0; i < 60; i++) {
+			int_fast64_t val = power_mod(ud(mt), s, p);
+			int_fast64_t temp = s;
+			while (temp != p - 1 and 1 < val and val < p - 1) {
+				val = mul_mod(val, val, p);
+				temp <<= 1;
+			}
+			if (val != p - 1 and temp % 2 == 0) return false;
+		}
+		return true;
+	}
 	
 	template<class mersenne_twister_engine>
 	void factor_recursive(int_fast64_t n, std::map< int_fast64_t, int_fast64_t>& previous, mersenne_twister_engine& mt, int_fast64_t depth) {
@@ -172,22 +203,30 @@ namespace tpp {
 		std::uniform_int<int_fast64_t> ud(2, n - 1);
 		auto x0 = ud(mt);
 		auto c = ud(mt);
-		int_fast64_t result = brent(n, x0, c);
-		auto it = previous.find(result);
-		if (it != previous.end()) //if it's in then either it's fucked or it's ok to do this
-			it->second++;
+		if (ispmiller(n, mt)) {
+			auto it = previous.find(n);
+			if (it != previous.end()) //if it's in then either it's fucked or it's ok to do this
+				it->second++;
+			else previous[n] = 1;
+		}
 		else {
-			if (result == n || result == 1) {
-				if (depth <= 0) {// give up
-					previous[n] = 1;
-				}
-				else { //try again
-					factor_recursive(n, previous, mt, depth - 1);
-				}
-			}
+			int_fast64_t result = brent(n, x0, c);
+			auto it = previous.find(result);
+			if (it != previous.end()) //if it's in then either it's fucked or it's ok to do this
+				it->second++;
 			else {
-				factor_recursive(n / result, previous, mt, depth);
-				factor_recursive(result, previous, mt, depth);
+				if (result == n || result == 1) {
+					if (depth <= 0) {// give up
+						previous[n] = 1;
+					}
+					else { //try again
+						factor_recursive(n, previous, mt, depth - 1);
+					}
+				}
+				else {
+					factor_recursive(n / result, previous, mt, depth);
+					factor_recursive(result, previous, mt, depth);
+				}
 			}
 		}
 	}
@@ -197,11 +236,21 @@ namespace tpp {
 		std::vector<pair> result;
 		std::map< int_fast64_t, int_fast64_t> factorization_map;
 		//factorization_map[1] = 1;
-		n = trial_division3(n, factorization_map, 100000);
-		if (n>1)
-			factor_recursive(n, factorization_map, mt, 1);
+		n = trial_division3(n, factorization_map, std::numeric_limits<int_fast32_t>::max());
+		if (n > 1) {
+			if (ispmiller(n, mt))
+				factorization_map[n] = 1;
+			else
+				factor_recursive(n, factorization_map, mt, 4);
+		}
 		result.assign(factorization_map.begin(), factorization_map.end());
 		return result;
+	};
+
+	std::vector<pair> factor(int_fast64_t n) {
+		std::random_device rd;
+		std::mt19937 mt(rd());
+		return factor(n, mt);
 	};
 
 	std::tuple<pair> euclidian_algorithm(int_fast64_t big, int_fast64_t small, int_fast64_t cutoff) {
@@ -225,6 +274,12 @@ namespace tpp {
 
 	template<class mersenne_twister_engine>
 	std::vector<triple> generate_triples(int_fast64_t n, mersenne_twister_engine& mt) {
+		return generate_triples(factor(n, mt));
+	}
+
+	std::vector<triple> generate_triples(int_fast64_t n) {
+		std::random_device rd;
+		std::mt19937 mt(rd());
 		return generate_triples(factor(n, mt));
 	}
 }

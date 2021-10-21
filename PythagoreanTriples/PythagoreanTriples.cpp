@@ -8,12 +8,14 @@ int main()
     std::cout << "Hello World!\n\r";
     std::random_device rd;
     std::mt19937 mt(rd());
-    std::uniform_int<int> ud(0, 100);
-    std::cout << "random number: " << ud(mt);
     //tpp::generate_triples(2llu * 5llu * 13llu * 17llu * 65537llu*100003llu, mt);
-    //tpp::generate_triples(4611686018427387902, mt);
-    //tpp::factor(2llu*5llu*13llu*17llu* 65537llu * 100003llu, mt);
-    auto factorization = tpp::factor(4611686890305753337, mt);
+    std::cout << "int 32 max" << std::numeric_limits<int_fast32_t>::max()<<"\n\r";
+    std::cout << "int 64 max" << std::numeric_limits<int_fast64_t>::max()<<"\n\r";
+    std::cout << tpp::ispmiller(2305843009213693951, mt) * 10 << "\n\r";
+    auto factorization = tpp::factor(4611686890305753337, mt);// 4611686890305753337, mt);
     for (const auto& it : factorization)
         std::cout << " " << std::get<0>(it) << "^" << std::get<1>(it);
+
+    //big prime 2305843009213693951
+    //big product of 2 primes 4611686890305753337
 }
