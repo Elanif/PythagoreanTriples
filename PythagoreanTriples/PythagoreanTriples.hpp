@@ -5,9 +5,8 @@
 #include<array>
 #include<random>
 
-
-
 namespace tpp {
+
 	using Random = effolkronium::random_static;
 
 	typedef std::tuple<int_fast64_t, int_fast64_t> pair;
@@ -101,7 +100,7 @@ namespace tpp {
 	}
 
 	int_fast64_t power_mod(int_fast64_t a, int_fast64_t b, int_fast64_t mod) {
-		int_fast64_t result=1;
+		int_fast64_t result = 1;
 		while (b) {
 			if (b & 1) result = mul_mod(result, a, mod);
 			if (b >>= 1) a = mul_mod(a, a, mod);
@@ -113,38 +112,9 @@ namespace tpp {
 		return (mul_mod(x, x, mod) + c) % mod;
 	}
 
-	//https://cp-algorithms.com/algebra/factorization.html
-	int_fast64_t brent(int_fast64_t n, int_fast64_t x0 = 2, int_fast64_t c = 1) {
-		int_fast64_t x = x0;
-		int_fast64_t g = 1;
-		int_fast64_t q = 1;
-		int_fast64_t xs, y;
-
-		int_fast64_t m = 64; // 128;
-		int_fast64_t l = 1;
-		while (g == 1) {
-			y = x;
-			for (int_fast64_t i = 1; i < l; i++)
-				x = f(x, c, n);
-			int_fast64_t k = 0;
-			while (k < l && g == 1) {
-				xs = x;
-				for (int_fast64_t i = 0; i < m && i < l - k; i++) {
-					x = f(x, c, n);
-					q = mul_mod(q, abs(y - x), n);
-				}
-				g = std::gcd(q, n);
-				k += m;
-			}
-			l *= 2;
-		}
-		if (g == n) {
-			do {
-				xs = f(xs, c, n);
-				g = std::gcd(abs(xs - y), n);
-			} while (g == 1);
-		}
-		return g;
+	uint_fast64_t abs(uint_fast64_t x, uint_fast64_t y) {
+		if (x < y) return y - x;
+		return x - y;
 	}
 
 	//https://cp-algorithms.com/algebra/factorization.html
@@ -164,7 +134,7 @@ namespace tpp {
 		}
 		static std::array<int_fast64_t, 8> increments = { 4, 2, 4, 2, 4, 6, 2, 6 };
 		int_fast64_t i = 0;
-		for (int_fast64_t d = 7; d * d <= std::min(n,max); d += increments[i++]) {
+		for (int_fast64_t d = 7; d * d <= std::min(n, max); d += increments[i++]) {
 			while (n % d == 0) {
 				add(d);
 				n /= d;
@@ -196,11 +166,45 @@ namespace tpp {
 		}
 		return true;
 	}
+
+	//https://cp-algorithms.com/algebra/factorization.html
+	int_fast64_t brent(int_fast64_t n, int_fast64_t x0 = 2, int_fast64_t c = 1) {
+		int_fast64_t x = x0;
+		int_fast64_t g = 1;
+		int_fast64_t q = 1;
+		int_fast64_t xs, y;
+
+		int_fast64_t m = 64; // 128;
+		int_fast64_t l = 1;
+		while (g == 1) {
+			y = x;
+			for (int_fast64_t i = 1; i < l; i++)
+				x = f(x, c, n);
+			int_fast64_t k = 0;
+			while (k < l && g == 1) {
+				xs = x;
+				for (int_fast64_t i = 0; i < m && i < l - k; i++) {
+					x = f(x, c, n);
+					q = mul_mod(q, std::abs(y - x), n);
+				}
+				g = std::gcd(q, n);
+				k += m;
+			}
+			l *= 2;
+		}
+		if (g == n) {
+			do {
+				xs = f(xs, c, n);
+				g = std::gcd(std::abs(xs - y), n);
+			} while (g == 1);
+		}
+		return g;
+	}
 	
 	template<class mersenne_twister_engine>
 	void factor_recursive(int_fast64_t n, std::map< int_fast64_t, int_fast64_t>& previous, mersenne_twister_engine& mt, int_fast64_t depth) {
 		if (n == 1) return;
-		std::uniform_int<int_fast64_t> ud(2, n - 1);
+		std::uniform_int<int_fast64_t> ud(2,std::min(n - 1, int_fast64_t(std::numeric_limits<int_fast32_t>::max())));
 		auto x0 = ud(mt);
 		auto c = ud(mt);
 		if (ispmiller(n, mt)) {
