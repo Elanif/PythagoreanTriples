@@ -1,13 +1,11 @@
 #pragma once
-#include"random.hpp"
 #include<map>
 #include<numeric>
 #include<array>
 #include<random>
+#include<ostream>
 
 namespace tpp {
-
-	using Random = effolkronium::random_static;
 
 	template<typename int_type>
 	using pair = std::tuple<int_type, int_type>;
@@ -244,8 +242,7 @@ namespace tpp {
 	}
 
 	template<typename int_type, class mersenne_twister_engine>
-	std::vector<pair<int_type> > factor(int_type n, mersenne_twister_engine& mt) {
-		std::vector<pair<int_type> > result;
+	std::map<int_type, int_type> factor(int_type n, mersenne_twister_engine& mt) {
 		std::map<int_type, int_type> factorization_map;
 		//factorization_map[1] = 1;
 		n = trial_division3(n, factorization_map, int_type(std::numeric_limits<int_fast32_t>::max()));
@@ -255,12 +252,11 @@ namespace tpp {
 			else
 				factor_recursive(n, factorization_map, mt, 4);
 		}
-		result.assign(factorization_map.begin(), factorization_map.end());
-		return result;
+		return factorization_map;
 	};
 
 	template<typename int_type>
-	std::vector<pair<int_type> > factor(int_type n) {
+	std::map<int_type, int_type> factor(int_type n) {
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		return factor(n, mt);
@@ -271,8 +267,231 @@ namespace tpp {
 		return pair<int_type>(1, 0);
 	};
 
+	//pythagorean triple
+	class tp {
+
+	};
+
+	//pythagorean prime
 	template<typename int_type>
-	std::vector<triple<int_type> > generate_triples(const std::vector<pair<int_type> >& factorization) {
+	struct pp {
+
+		struct prime_container {
+			std::map<int_type, int_type> primes;
+			bool even = false;
+			prime_container& operator*=(const prime_container& rhs) {
+				even = false;
+				for (auto const& it : rhs.primes) {
+					auto find = primes.find(it.first);
+					if (find == primes.end()) {
+						primes[it.first] = it.second;
+					}
+					else {
+						primes[it.first] += it.second;
+						if ((primes[it.first] & 1) == 0) even = true;
+					}
+				}
+				return *this;
+			}
+			const prime_container operator*(const prime_container& other) const {
+				return prime_container(*this) *= other;
+			}
+			prime_container() {}
+			prime_container(std::map<int_type, int_type>const& container) {
+				primes=container;
+			}
+
+			bool compatible(const prime_container& a) const{
+				for (const auto& it : this->primes) {
+					const auto& find = a.primes.find(it.first);
+					if (find != a.primes.end())
+						if ((find->second + it.second) % 2 == 0)
+							return true;
+				}
+				return false;
+			}
+		} factors;
+		int_type a = 0;
+		int_type b = 0;
+		pp() {}
+		pp(int_type a, int_type b) {
+			if (a < b) {
+				this->a = a;
+				this->b = b;
+			}
+			else {
+				this->a = b;
+				this->b = a;
+			}
+			factors = prime_container(factor<int_type>(a * a + b * b));
+		}
+		pp(int_type a, int_type b, int_type p) {
+			if (a < b) {
+				this->a = a;
+				this->b = b;
+			}
+			else {
+				this->a = b;
+				this->b = a;
+			}
+			factors[p]=1;
+		}
+
+		pp& default_multiplication(const pp& rhs) {
+			int_type pp_2_a_old = this->a;
+			int_type pp_2_b_old = this->b;
+			int_type pp_2_a_new = abs(pp_2_a_old * rhs.b, pp_2_b_old * rhs.a); //if
+			int_type pp_2_b_new = pp_2_b_old * rhs.b + pp_2_a_old * rhs.a;
+			this->a = pp_2_a_new;
+			this->b = pp_2_b_new;
+			return *this;
+		}
+
+		pp& nonstandard_multiplication(const pp& rhs) {
+			int_type pp_2_a_old = this->a;
+			int_type pp_2_b_old = this->b;
+			int_type pp_2_a_new = abs(pp_2_a_old * rhs.b, pp_2_b_old * rhs.a); //if
+			int_type pp_2_b_new = pp_2_b_old * rhs.b + pp_2_a_old * rhs.a;
+			this->a = pp_2_a_new;
+			this->b = pp_2_b_new;
+			return *this;
+		}
+
+		pp& swap_multiplication(const pp& rhs) {
+			int_type pp_2_a_old = this->a;
+			int_type pp_2_b_old = this->b;
+			int_type pp_2_a_new = abs(pp_2_a_old * rhs.a, pp_2_b_old * rhs.b); //if
+			int_type pp_2_b_new = pp_2_b_old * rhs.a + pp_2_a_old * rhs.b;
+			this->b = pp_2_a_new;
+			this->a = pp_2_b_new;
+			return *this;
+		}
+
+		pp& increasing_multiplication(const pp& rhs) {
+			int_type pp_2_a_old = this->a;
+			int_type pp_2_b_old = this->b;
+			int_type pp_2_a_new = abs(pp_2_a_old * rhs.b, pp_2_b_old * rhs.a); //if
+			int_type pp_2_b_new = pp_2_b_old * rhs.b + pp_2_a_old * rhs.a;
+			if (pp_2_b_new > pp_2_a_new) {
+				this->a = pp_2_a_new;
+				this->b = pp_2_b_new;
+			}
+			else {
+				this->b = pp_2_a_new;
+				this->a = pp_2_b_new;
+			}
+			return *this;
+		}
+
+		pp& decreasing_multiplication(const pp& rhs) {
+			int_type pp_2_a_old = this->a;
+			int_type pp_2_b_old = this->b;
+			int_type pp_2_a_new = abs(pp_2_a_old * rhs.b, pp_2_b_old * rhs.a); //if
+			int_type pp_2_b_new = pp_2_b_old * rhs.b + pp_2_a_old * rhs.a;
+			if (pp_2_b_new < pp_2_a_new) {
+				this->a = pp_2_a_new;
+				this->b = pp_2_b_new;
+			}
+			else {
+				this->b = pp_2_a_new;
+				this->a = pp_2_b_new;
+			}
+			return *this;
+		}
+
+		pp& positive_multiplication(const pp& rhs) {
+			int_type pp_2_a_old = this->a;
+			int_type pp_2_b_old = this->b;
+			int_type pp_2_a_new_left = pp_2_a_old * rhs.b;
+			int_type pp_2_a_new_right = pp_2_b_old * rhs.a;
+			int_type pp_2_b_new = pp_2_b_old * rhs.b + pp_2_a_old * rhs.a;
+			if (pp_2_a_new_left > pp_2_a_new_right) {
+				this->a = pp_2_a_new_left - pp_2_a_new_right;
+				this->b = pp_2_b_new;
+			}
+			else {
+				this->b = pp_2_a_new_right - pp_2_a_new_left;
+				this->a = pp_2_b_new;
+			}
+			return *this;
+		}
+
+		pp& negative_multiplication(const pp& rhs) {
+			int_type pp_2_a_old = this->a;
+			int_type pp_2_b_old = this->b;
+			int_type pp_2_a_new_left = pp_2_a_old * rhs.b;
+			int_type pp_2_a_new_right = pp_2_b_old * rhs.a;
+			int_type pp_2_b_new = pp_2_b_old * rhs.b + pp_2_a_old * rhs.a;
+			if (pp_2_a_new_left > pp_2_a_new_right) {
+				this->b = pp_2_a_new_left - pp_2_a_new_right;
+				this->a = pp_2_b_new;
+			}
+			else {
+				this->a = pp_2_a_new_right - pp_2_a_new_left;
+				this->b = pp_2_b_new;
+			}
+			return *this;
+		}
+
+		pp& operator*=(const pp& rhs) {
+			this->factors *= rhs.factors;
+			if (multiplication == multiplication_type::default_multiplication)
+				return default_multiplication(rhs);
+			if (multiplication == multiplication_type::swap_multiplication)
+				return swap_multiplication(rhs);
+			if (multiplication == multiplication_type::increasing_multiplication)
+				return increasing_multiplication(rhs);
+			if (multiplication == multiplication_type::decreasing_multiplication)
+				return decreasing_multiplication(rhs);
+			if (multiplication == multiplication_type::positive_multiplication)
+				return positive_multiplication(rhs);
+			if (multiplication == multiplication_type::negative_multiplication)
+				return negative_multiplication(rhs);
+			return default_multiplication(rhs);
+		}
+		const pp operator*(const pp& other) const {
+			return pp(*this) *= other;
+		}
+		pp& operator%=(const pp& rhs) {
+			this->factors *= rhs.factors;
+			this->swap();
+			return (*this) *= rhs;
+		}
+		const pp operator%(const pp& other) const {
+			return pp(*this) %= other;
+		}
+		friend const pp swap(pp const& s) {
+			pp temp = s;
+			temp.a = s.b;
+			temp.b = s.a;
+			return temp;
+		}
+		void swap() {
+			int_type temp_a = this->a;
+			this->a = this->b;
+			this->b = temp_a;
+		}
+		bool compatible(pp const& a) const{
+			return a.factors.compatible(this->factors);
+		}
+	};
+
+	template<typename int_type>
+	pp<int_type> make_pp(int_type a, int_type b) {
+		pp temp(a, b);
+		temp.swap();
+		return temp;
+	}
+
+	template<typename int_type>
+	std::ostream& operator<<(std::ostream& os, const pp<int_type>& p)
+	{
+		os << "(" << p.a << "," << p.b << ")";
+		return os;
+	}
+
+	template<typename int_type>
+	std::vector<triple<int_type> > generate_triples(const std::map<int_type, int_type>& factorization) {
 		int_type multiplier = 1;
 		std::vector<pair> good_primes;
 		for (auto const& it : factorization) {
